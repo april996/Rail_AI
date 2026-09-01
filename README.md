@@ -11,7 +11,18 @@
 6. 将TTS改造成边生成边播报
 7. 实现PTT打断TTS。
 8. 对于AEC、WebRTC、RAG、知识库、评分系统、教员台、多GPU调度、微服务拆分、EventBus重构、数据库持久化这些内容只保留扩展点
-
+RAG知识库
+智能调度问答
+轨交专业知识库
+Agent任务规划
+Function Calling
+MCP
+多轮记忆
+LangChain
+向量数据库
+安全规则引擎
+数字人
+GPT级对话能力
 ## ref
 https://github.com/superxiaobai-1/LLM_Voice_Flow.git
 
