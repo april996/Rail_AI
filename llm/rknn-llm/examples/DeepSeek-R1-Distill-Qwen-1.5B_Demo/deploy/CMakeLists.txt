@@ -17,7 +17,15 @@ else()
     endif()
 endif()
 
-set(SOURCE_FILES_1 src/llm_demo.cpp)
+get_filename_component(CABIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../../../cabin" ABSOLUTE)
+include_directories(${CABIN_DIR}/include)
+
+set(SOURCE_FILES_1
+    src/llm_demo.cpp
+    ${CABIN_DIR}/src/CabinProtocol.cpp
+    ${CABIN_DIR}/src/RoleRouter.cpp
+    ${CABIN_DIR}/src/SessionManager.cpp
+)
 add_executable(llm_demo ${SOURCE_FILES_1})
 
 set(RKLLM_API_PATH "${CMAKE_SOURCE_DIR}/../../../rkllm-runtime/${CMAKE_SYSTEM_NAME}/librkllm_api")
@@ -28,7 +36,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Android")
     target_link_libraries(llm_demo  ${RKLLM_RT_LIB} log OpenMP::OpenMP_CXX)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(RKLLM_RT_LIB ${RKLLM_API_PATH}/aarch64/librkllmrt.so)
-    target_link_libraries(llm_demo  ${RKLLM_RT_LIB} /usr/local/lib/libzmq_component.so  zmq)
+    target_link_libraries(llm_demo  ${RKLLM_RT_LIB} /usr/local/lib/libzmq_component.so  zmq pthread)
 endif()
 
 # Install the executable file to the specified directory

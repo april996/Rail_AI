@@ -7,6 +7,7 @@
 #include <memory>
 #include <atomic>
 #include <cstdint>
+#include <string>
 
 struct AudioMessage {
     std::unique_ptr<int16_t[]> data;
@@ -22,7 +23,9 @@ public:
     void push_audio(std::unique_ptr<int16_t[]> data, size_t length, bool is_last = false);
     AudioMessage pop_audio();
     
+    void clear();
     void stop();
+    bool stopped() const;
 
 private:
     std::queue<std::string> text_queue_;

@@ -1,16 +1,6 @@
-// Copyright (c) 2024 by Rockchip Electronics Co., Ltd. All Rights Reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// 修改原因：离线联调桩保持与 llm_demo 相同的 CABIN1 信封与分句推送 TTS，
+// 便于无 RK 板时验证 Session/Role/PTT 协议，旧纯文本仍可用。
+
 #pragma once
 
 #include <string.h>
@@ -23,6 +13,9 @@
 #include <set>
 #include "ZmqServer.h"
 #include "ZmqClient.h"
+#include "CabinProtocol.h"
+#include "RoleRouter.h"
+#include "SessionManager.h"
 #include <cwchar>
 #include <locale>
 #include <clocale>
@@ -40,11 +33,12 @@ zmq_component::ZmqClient tts_client_("tcp://localhost:7777");
 
 void exit_handler(int signal)
 {
-
     exit(signal);
 }
 
-void message_worker(const std::string &rag_text)
+void message_worker(const std::string &session_id,
+                    const std::string &role,
+                    const std::string &rag_text)
 {
     static const std::wregex wide_delimiter(
         L"([。！？；：\n]|\\?\\s|\\!\\s|\\；|\\，|\\、|\\|)");
@@ -79,43 +73,54 @@ void message_worker(const std::string &rag_text)
 
         if (!wide_segment.empty())
         {
-            // 转换回UTF-8
-            auto response1 = tts_client_.request(converter.to_bytes(wide_segment));
+            const std::string payload = converter.to_bytes(wide_segment);
+            auto response1 = tts_client_.request(
+                cabin::CabinProtocol::encode(cabin::CABIN_MSG_TTS_TEXT, session_id, role, payload));
             std::cout << "[tts -> llm] received: " << response1 << std::endl;
-            // queue.push_text(converter.to_bytes(wide_segment));
         }
         ++it;
     }
 
-    // 处理剩余内容
     if (last_pos < wide_text.length())
     {
         std::wstring last_segment = wide_text.substr(last_pos);
         if (!last_segment.empty())
         {
-            auto response1 = tts_client_.request(converter.to_bytes(last_segment));
+            const std::string payload = converter.to_bytes(last_segment);
+            auto response1 = tts_client_.request(
+                cabin::CabinProtocol::encode(cabin::CABIN_MSG_TTS_END, session_id, role, payload));
             std::cout << "[tts -> llm] received: " << response1 << std::endl;
-            // queue.push_text(converter.to_bytes(last_segment));
         }
     }
 }
 
 void receive_asr_data_and_process()
 {
-
     while (true)
     {
-
         std::string input_str = server.receive();
         std::cout << "[voice -> llm] received: " << input_str << std::endl;
         server.send("llm sucess reply !!!");
 
-        message_worker(input_str);
+        cabin::CabinMessage msg = cabin::CabinProtocol::decode(input_str);
+        const std::string user_text = msg.payload.empty() ? input_str : msg.payload;
+        if (user_text.empty())
+        {
+            continue;
+        }
+        const std::string role = cabin::RoleRouter::normalize(msg.role);
+        cabin::SessionManager::instance().set_role(msg.session_id, role);
+        const std::string prompt = cabin::SessionManager::instance().build_prompt(msg.session_id, user_text);
+        cabin::SessionManager::instance().append_user(msg.session_id, user_text);
+        cabin::SessionManager::instance().append_assistant(msg.session_id, user_text);
+        message_worker(msg.session_id, role, prompt);
     }
 }
 
 int main(int argc, char **argv)
 {
+    (void)argc;
+    (void)argv;
     setlocale(LC_ALL, "en_US.UTF-8");
 
     signal(SIGINT, exit_handler);

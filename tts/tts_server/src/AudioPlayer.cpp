@@ -1,4 +1,5 @@
 #include "AudioPlayer.h"
+#include <algorithm>
 #include <iostream>
 
 AudioPlayer::AudioPlayer()
@@ -27,9 +28,32 @@ bool AudioPlayer::initialize()
     return true;
 }
 
+void AudioPlayer::interrupt()
+{
+    interrupt_.store(true);
+    if (pcm_handle_)
+    {
+        snd_pcm_drop(pcm_handle_);
+        snd_pcm_prepare(pcm_handle_);
+    }
+}
+
+void AudioPlayer::reset_interrupt()
+{
+    interrupt_.store(false);
+}
+
+bool AudioPlayer::interrupted() const
+{
+    return interrupt_.load();
+}
+
 void AudioPlayer::play(const int16_t *audioData, int audio_len, float speed)
 {
-    if (!initialized_ || !pcm_handle_)
+    if (!initialized_ || !pcm_handle_ || !audioData || audio_len <= 0)
+        return;
+
+    if (interrupt_.load())
         return;
 
     unsigned int sample_rate = static_cast<unsigned int>(16000 * speed);
@@ -47,29 +71,33 @@ void AudioPlayer::play(const int16_t *audioData, int audio_len, float speed)
     }
 
     const snd_pcm_uframes_t frames = audio_len / 2;
-    const int max_retries = 3;
-    int retry_count = 0;
+    const snd_pcm_uframes_t chunk = 1024;
+    snd_pcm_uframes_t written = 0;
 
-    while (true)
+    while (written < frames)
     {
-        err = snd_pcm_writei(pcm_handle_, audioData, frames);
+        if (interrupt_.load())
+        {
+            snd_pcm_drop(pcm_handle_);
+            snd_pcm_prepare(pcm_handle_);
+            return;
+        }
+
+        const snd_pcm_uframes_t n = std::min(chunk, frames - written);
+        err = snd_pcm_writei(pcm_handle_, audioData + written, n);
         if (err == -EPIPE)
         {
-            if (++retry_count >= max_retries)
-                break;
             snd_pcm_prepare(pcm_handle_);
+            continue;
         }
-        else if (err < 0)
+        if (err < 0)
         {
             break;
         }
-        else
-        {
-            break;
-        }
+        written += static_cast<snd_pcm_uframes_t>(err);
     }
 
-    if (snd_pcm_state(pcm_handle_) == SND_PCM_STATE_RUNNING)
+    if (!interrupt_.load() && snd_pcm_state(pcm_handle_) == SND_PCM_STATE_RUNNING)
     {
         snd_pcm_drain(pcm_handle_);
     }

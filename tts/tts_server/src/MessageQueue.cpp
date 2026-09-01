@@ -47,6 +47,29 @@ AudioMessage DoubleMessageQueue::pop_audio()
     return msg;
 }
 
+void DoubleMessageQueue::clear()
+{
+    {
+        std::lock_guard<std::mutex> lock(text_mutex_);
+        while (!text_queue_.empty()) {
+            text_queue_.pop();
+        }
+    }
+    {
+        std::lock_guard<std::mutex> lock(audio_mutex_);
+        while (!audio_queue_.empty()) {
+            audio_queue_.pop();
+        }
+    }
+    text_cond_.notify_all();
+    audio_cond_.notify_all();
+}
+
+bool DoubleMessageQueue::stopped() const
+{
+    return stop_.load();
+}
+
 void DoubleMessageQueue::stop()
 {
     {

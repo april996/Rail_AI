@@ -7,8 +7,11 @@ project(TTSServer)
 
 set(CMAKE_CXX_FLAGS " -O3 -fopenmp -std=c++17 ")
 set(CMAKE_C_FLAGS " -O3 -fopenmp -std=c++17 ")
+get_filename_component(CABIN_DIR "${CMAKE_SOURCE_DIR}/../cabin" ABSOLUTE)
+
 include_directories(
     ${CMAKE_SOURCE_DIR}/tts_server/include
+    ${CABIN_DIR}/include
     ${ALSA_INCLUDE_DIRS}
 )
 
@@ -18,6 +21,7 @@ file(GLOB SOURCES tts_server/src/*.cpp)
 
 add_executable(tts_server
                 ${SOURCES}
+                ${CABIN_DIR}/src/CabinProtocol.cpp
                ./test/main.cpp
                ./src/tn/glog/src/demangle.cc
                ./src/tn/glog/src/logging.cc
@@ -96,5 +100,5 @@ target_include_directories(tts_server PUBLIC ./eigen-3.4.0
                                               ./src/header  
                                               ./tts_server/include)
 
-target_link_libraries(tts_server    /usr/local/lib/libzmq_component.so  zmq portaudio asound)
+target_link_libraries(tts_server    /usr/local/lib/libzmq_component.so  zmq portaudio asound pthread)
 

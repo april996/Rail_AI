@@ -1,12 +1,15 @@
-include_directories(${PROJECT_SOURCE_DIR} 
+get_filename_component(CABIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../../cabin" ABSOLUTE)
 
-
+include_directories(${PROJECT_SOURCE_DIR}
+    ${CABIN_DIR}/include
 )
 
 
  add_executable(sherpa-onnx-microphone-test1
     sherpa-onnx-microphone.cc
     microphone.cc
+    ${CABIN_DIR}/src/CabinProtocol.cpp
+    ${CABIN_DIR}/src/PttController.cpp
   )
 
 
