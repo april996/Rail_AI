@@ -24,10 +24,10 @@ enum SessionState {
 
 struct SessionContext {
     std::string session_id;
-    std::string role;
+    std::string role;#instructor，OCCer，stationer
     SessionState state;
     bool interrupt_requested;
-    std::vector<std::pair<std::string, std::string> > history;
+    std::vector<std::pair<std::string, std::string> > history;#学员问题和LLM答案
     std::string last_user_text;
     std::string last_assistant_text;
 
