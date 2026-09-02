@@ -13,9 +13,12 @@
 #include <set>
 #include "ZmqServer.h"
 #include "ZmqClient.h"
+
+#新增的三个头文件
 #include "CabinProtocol.h"
 #include "RoleRouter.h"
 #include "SessionManager.h"
+
 #include <cwchar>
 #include <locale>
 #include <clocale>
@@ -35,7 +38,7 @@ void exit_handler(int signal)
 {
     exit(signal);
 }
-
+#新增session_id,role
 void message_worker(const std::string &session_id,
                     const std::string &role,
                     const std::string &rag_text)
@@ -73,9 +76,11 @@ void message_worker(const std::string &session_id,
 
         if (!wide_segment.empty())
         {
+            #修改后
             const std::string payload = converter.to_bytes(wide_segment);
             auto response1 = tts_client_.request(
                 cabin::CabinProtocol::encode(cabin::CABIN_MSG_TTS_TEXT, session_id, role, payload));
+            
             std::cout << "[tts -> llm] received: " << response1 << std::endl;
         }
         ++it;
@@ -86,9 +91,11 @@ void message_worker(const std::string &session_id,
         std::wstring last_segment = wide_text.substr(last_pos);
         if (!last_segment.empty())
         {
+            #修改后
             const std::string payload = converter.to_bytes(last_segment);
             auto response1 = tts_client_.request(
                 cabin::CabinProtocol::encode(cabin::CABIN_MSG_TTS_END, session_id, role, payload));
+            
             std::cout << "[tts -> llm] received: " << response1 << std::endl;
         }
     }
@@ -102,6 +109,7 @@ void receive_asr_data_and_process()
         std::cout << "[voice -> llm] received: " << input_str << std::endl;
         server.send("llm sucess reply !!!");
 
+        #新处理逻辑，待优化
         cabin::CabinMessage msg = cabin::CabinProtocol::decode(input_str);
         const std::string user_text = msg.payload.empty() ? input_str : msg.payload;
         if (user_text.empty())
@@ -119,8 +127,8 @@ void receive_asr_data_and_process()
 
 int main(int argc, char **argv)
 {
-    (void)argc;
-    (void)argv;
+    (void)argc;#新
+    (void)argv;#新
     setlocale(LC_ALL, "en_US.UTF-8");
 
     signal(SIGINT, exit_handler);
